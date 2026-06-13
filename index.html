@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>따라 타이핑</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root {
+    --base: 44px;
+    --ink: rgba(28,26,22,0.16);          /* 가이드 글씨 농도 (슬라이더로 조절) */
+    --paper:#f1efe8; --panel:#fbfaf6;
+    --ink-1:#1d1b16; --ink-2:#57534a; --muted:#9c968a;
+    --line:#e4e0d4; --line-2:#ece8dc;
+    --warn:#a8472a; --warn-soft:#f1e3dc;
+    --r:10px; --r-sm:7px;
+    --font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    --serif:'Iowan Old Style','Hoefler Text','Apple Garamond',Georgia,'Nanum Myeongjo',serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; color:var(--ink-1); font-family:var(--font);
+    background:var(--paper);
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* 자체 디자인 스크롤바 */
+  * { scrollbar-width: thin; scrollbar-color: #d2ccbd transparent; }
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #d2ccbd; border-radius: 999px;
+    border: 3px solid transparent; background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #bcb4a1; background-clip: content-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
+  /* 사이드바 */
+  .sidebar {
+    width: 316px; flex-shrink: 0; height: 100vh; position: sticky; top: 0;
+    background: var(--panel); border-right: 1px solid var(--line);
+    overflow-y: auto; overflow-x: hidden;
+    transition: width .3s cubic-bezier(.4,0,.2,1);
+  }
+  .sidebarInner { padding: 26px 24px 28px; display: flex; flex-direction: column; gap: 0; width: 316px; }
+  .sidebarInner > .field { padding: 20px 0; border-top: 1px solid var(--line-2); }
+  .sidebarInner > .btnRow { margin-top: 2px; padding-top: 22px; border-top: 1px solid var(--line-2); }
+  .brand { display: flex; flex-direction: column; gap: 3px; }
+  .brand h1 { font-family: var(--serif); font-weight: 600; font-size: 23px; letter-spacing: -.01em; margin: 0; }
+  .brand .sub { font-size: 12px; color: var(--muted); }
+  body.collapsed .sidebar { width: 0; }
+
+  .sideHead { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 22px; }
+  .iconBtn {
+    width: 32px; height: 32px; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: transparent; cursor: pointer; font-size: 13px; color: var(--muted);
+    display: flex; align-items: center; justify-content: center; transition: .15s; flex-shrink: 0;
+  }
+  .iconBtn:hover { background: #efece2; color: var(--ink-1); }
+  .openBtn {
+    position: fixed; top: 20px; left: 20px; z-index: 60;
+    width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--panel); cursor: pointer; font-size: 15px; color: var(--ink-1); display: none;
+    align-items: center; justify-content: center; transition: .15s;
+  }
+  .openBtn:hover { background: #efece2; }
+  body.collapsed .openBtn { display: flex; }
+
+  .field { display: flex; flex-direction: column; gap: 12px; }
+  .field > label { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  textarea#txt {
+    width: 100%; height: 168px; resize: vertical;
+    padding: 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
+    font-size: 15px; line-height: 1.65; font-family: inherit; color: var(--ink-1);
+    background: #fff; transition: .15s;
+  }
+  textarea#txt:focus { outline: none; border-color: var(--ink-2); }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 2px; background: var(--line); cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ink-1); border: 0; transition: .12s; }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--ink-1); border: 0; }
+
+  .val { font-size: 12.5px; font-weight: 600; color: var(--ink-2); min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+  select.val {
+    width: 100%; min-width: 0; text-align: left; padding: 11px 12px;
+    border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; cursor: pointer;
+    -webkit-appearance: none; appearance: none; color: var(--ink-1); font-weight: 500;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239c968a' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 13px center;
+  }
+
+  button.go {
+    padding: 12px 16px; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: transparent; color: var(--ink-2); font-size: 13.5px; font-weight: 600; cursor: pointer; transition: .15s;
+  }
+  button.go:hover { border-color: var(--ink-2); color: var(--ink-1); }
+  button.primary {
+    padding: 13px 16px; border: 1px solid var(--ink-1); border-radius: var(--r-sm);
+    background: var(--ink-1); color: var(--panel); font-size: 14px; font-weight: 600; letter-spacing: .02em;
+    cursor: pointer; transition: .15s;
+  }
+  button.primary:hover { background: #000; border-color: #000; }
+  button.primary.paused { background: var(--warn); border-color: var(--warn); }
+  button.primary.paused:hover { background: #93371f; border-color: #93371f; }
+  .btnRow { display: flex; gap: 10px; }
+  .btnRow button { flex: 1; }
+  .hint { font-size: 12.5px; color: var(--muted); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 8px 13px; border: 1px solid var(--line); border-radius: 999px;
+    background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: .15s; font-family: inherit;
+  }
+  .chip:hover { border-color: var(--ink-2); color: var(--ink-1); }
+  .chip.on { background: var(--ink-1); border-color: var(--ink-1); color: var(--panel); }
+
+  /* 본문 + 종이 */
+  .main { flex: 1; padding: 40px 32px; display: flex; justify-content: center; }
+  body.collapsed .main { padding-top: 78px; }
+  .paper {
+    width: 100%; max-width: 880px; align-self: flex-start;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  }
+  .paperBar {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; gap: 30px; align-items: center; flex-wrap: nowrap;
+    padding: 14px 26px; border-bottom: 1px solid var(--line-2);
+    background: rgba(251,250,246,.86); backdrop-filter: blur(8px);
+    border-radius: var(--r) var(--r) 0 0;
+  }
+  .paperBar .field { gap: 8px; }
+  .paperBar .field > label { font-size: 10px; letter-spacing: .14em; }
+  .paperBar .actions { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+  .paperBar button.primary, .paperBar button.go { padding: 9px 15px; font-size: 13px; }
+  .typeWrap { padding: 44px 48px 56px; }
+  .typeBox { position: relative; }
+  .layer {
+    font-size: var(--base); line-height: 1.95; letter-spacing: .01em;
+    white-space: pre-wrap; word-break: break-word; margin: 0;
+  }
+  #backdrop { position: relative; pointer-events: none; min-height: 1.95em; }
+  #practice {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    border: none; outline: none; resize: none; overflow: hidden;
+    background: transparent; color: transparent; caret-color: var(--ink-1);
+    padding: 0; margin: 0; font-family: inherit; letter-spacing: .01em;
+  }
+  #backdrop .ghost { color: var(--ink); }
+  #backdrop .ok { color: var(--ink-1); }
+  #backdrop .bad { color: var(--warn); background: var(--warn-soft); border-radius: 2px; }
+
+  /* 집중 장치 */
+  #nudge {
+    position: fixed; inset: 0; z-index: 100;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(29,27,22,0.42); backdrop-filter: blur(4px);
+  }
+  #nudge.show { display: flex; animation: fadein .25s ease; }
+  @keyframes fadein { from{opacity:0} to{opacity:1} }
+  .nudgeCard {
+    background: var(--panel); padding: 36px 48px; border-radius: 14px; text-align: center;
+    border: 1px solid var(--line); box-shadow: 0 30px 60px rgba(29,27,22,.22);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+  .nudgeBig { font-family: var(--serif); font-size: 27px; font-weight: 600; color: var(--ink-1); }
+  .nudgeSub { margin-top: 10px; font-size: 14px; color: var(--muted); }
+
+  #pauseBadge {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+    z-index: 90; display: none;
+    background: var(--ink-1); color: var(--panel); padding: 11px 20px; border-radius: 999px;
+    font-size: 13.5px; font-weight: 500; letter-spacing: .01em;
+  }
+  #pauseBadge.show { display: block; }
+
+  .track { height: 3px; background: var(--line); border-radius: 999px; overflow: hidden; }
+  .fill { height: 100%; width: 0%; background: var(--ink-1); border-radius: 999px; transition: width .12s linear, background .25s; }
+
+  #fx { position: fixed; inset: 0; z-index: 200; pointer-events: none; display: none; }
+  #fx.show { display: block; }
+
+  .scrim { display: none; }
+
+  /* 반응형 — 좁은 화면에서는 사이드바를 서랍으로 */
+  @media (max-width: 880px) {
+    .sidebar {
+      position: fixed; top: 0; left: 0; height: 100vh; z-index: 80;
+      width: min(86vw, 320px);
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+      box-shadow: 0 0 50px rgba(29,27,22,.2);
+    }
+    .sidebarInner { width: min(86vw, 320px); }
+    body.collapsed .sidebar { width: min(86vw, 320px); transform: translateX(-100%); }
+    body:not(.collapsed) .scrim { display: block; position: fixed; inset: 0; background: rgba(29,27,22,.4); z-index: 70; }
+
+    .main { flex: 1; padding: 70px 16px 20px; }
+    body.collapsed .main { padding-top: 70px; }
+
+    .paperBar { flex-wrap: wrap; gap: 14px 22px; padding: 14px 18px; }
+    .paperBar .actions { width: 100%; margin-left: 0; justify-content: flex-end; }
+    .typeWrap { padding: 26px 22px 34px; }
+  }
+
+  @media (max-width: 460px) {
+    .paperBar .actions { gap: 8px; }
+    .paperBar button.primary, .paperBar button.go { flex: 1; padding: 10px 12px; }
+    .typeWrap { padding: 22px 18px 30px; }
+  }
+</style>
+</head>
+<body>
+  <button class="openBtn" onclick="toggleSidebar()" id="openBtn">☰</button>
+  <div class="scrim" id="scrim" onclick="toggleSidebar()"></div>
+
+  <div class="app">
+    <!-- 왼쪽 사이드바: 설정(위) + 따라 쓸 텍스트(아래) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebarInner">
+        <div class="sideHead">
+          <div class="brand">
+            <h1>따라 타이핑</h1>
+            <span class="sub">연한 글씨를 따라 써보세요</span>
+          </div>
+          <button class="iconBtn" onclick="toggleSidebar()" title="사이드바 접기">◀</button>
+        </div>
+
+        <div class="field">
+          <label>글자 크기</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="range" id="size" min="12" max="90" value="44">
+            <span class="val" id="sizeVal">44</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>연하기</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="range" id="opacity" min="6" max="45" value="18">
+            <span class="val" id="opVal">18%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>집중 알림</label>
+          <select class="val" id="idle">
+            <option value="0">끄기</option>
+            <option value="3">3초 멈추면</option>
+            <option value="5" selected>5초 멈추면</option>
+            <option value="8">8초 멈추면</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>자동으로 채울 문자</label>
+          <div class="chips" id="chips">
+            <button class="chip on" data-cat="hardSym">특수기호</button>
+            <button class="chip" data-cat="allSym">문장부호 전체</button>
+            <button class="chip" data-cat="eng">영문</button>
+            <button class="chip" data-cat="foreign">외국 문자</button>
+          </div>
+          <p class="hint" style="margin:2px 0 0">특수기호: 키보드에 없는 — … “ ” · → 등 · 문장부호 전체: 마침표·쉼표까지 · 외국 문자: 한자·가나 등</p>
+        </div>
+
+        <div class="field">
+          <label>따라 쓸 텍스트</label>
+          <textarea id="txt" placeholder="여기에 글을 입력하세요...">바른 글씨로 또박또박 써 봅니다.
+오늘도 좋은 하루 되세요.</textarea>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- 본문: 종이 위에 진행도 + 타이머 -->
+    <main class="main">
+      <div class="paper">
+        <div class="paperBar">
+          <div class="field">
+            <label id="progLabel">진행도</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="track" style="width:170px;"><div id="progFill" class="fill"></div></div>
+              <span id="accText" style="font-size:12px; color:var(--muted); min-width:62px;"></span>
+            </div>
+          </div>
+          <div class="field">
+            <label>집중 타이머</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span id="timerText" style="font-size:13px; font-weight:700; min-width:62px;">--</span>
+              <div class="track" style="width:96px;"><div id="timerFill" class="fill"></div></div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="go" onclick="resetType()">처음부터 다시</button>
+            <button class="primary" id="startBtn" onclick="startBtnClick()">시작하기</button>
+          </div>
+        </div>
+        <div class="typeWrap">
+          <div class="typeBox">
+            <div class="layer" id="backdrop"></div>
+            <textarea class="layer" id="practice" spellcheck="false"></textarea>
+          </div>
+          <div class="hint" style="margin-top:14px">연한 글씨 위에 그대로 따라 타이핑하세요 · 맞으면 진하게, 틀리면 빨갛게</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 집중 장치: 일정 시간 안 치면 뜨는 알림 -->
+  <div id="nudge">
+    <div class="nudgeCard">
+      <div class="nudgeBig">✍️ 딴생각 그만!</div>
+      <div class="nudgeSub" id="nudgeSub">계속 따라 써요</div>
+    </div>
+  </div>
+
+  <!-- 생각 중: Ctrl 누르는 동안 타이머 멈춤 -->
+  <div id="pauseBadge">⏸ 생각 중… <span style="opacity:.7">손을 떼면 다시 시작</span></div>
+
+  <!-- 완료 폭죽 -->
+  <canvas id="fx"></canvas>
+
+<script>
+  const txt = document.getElementById('txt');
+  const size = document.getElementById('size');
+  const opacity = document.getElementById('opacity');
+  const sizeVal = document.getElementById('sizeVal');
+  const opVal = document.getElementById('opVal');
+  const backdrop = document.getElementById('backdrop');
+  const practice = document.getElementById('practice');
+  const progFill = document.getElementById('progFill');
+  const progLabel = document.getElementById('progLabel');
+  const accText = document.getElementById('accText');
+  const timerText = document.getElementById('timerText');
+  const timerFill = document.getElementById('timerFill') || { style: {} };
+  const idleSel = document.getElementById('idle');
+  const nudge = document.getElementById('nudge');
+  const nudgeSub = document.getElementById('nudgeSub');
+
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // 사이드바 접기/펼치기
+  function toggleSidebar(){ document.body.classList.toggle('collapsed'); }
+
+  // 시작: 사이드바 접고 입력칸으로 포커스 → 바로 따라쓰기 시작
+  const startBtn = document.getElementById('startBtn');
+  const isTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+  // 터치 기기이거나 화면이 좁으면 '꾹 누르기' 안내, 넓은 데스크톱이면 'Ctrl' 안내
+  function holdHint(){
+    const small = window.matchMedia('(max-width: 880px)').matches;
+    return (isTouch || small) ? '꾹 누르면 일시정지' : 'Ctrl 누르는 동안 일시정지';
+  }
+  function updateStartBtn(){
+    if(!startBtn) return;
+    startBtn.classList.toggle('paused', started && paused);
+    startBtn.textContent = !started ? '시작하기' : (paused ? '⏸ 일시정지 중' : holdHint());
+  }
+  window.addEventListener('resize', updateStartBtn);
+  function pauseOn(){ if(!started||paused) return; paused=true; hideNudge(); pauseBadge.classList.add('show'); updateStartBtn(); }
+  function pauseOff(){ if(!paused) return; paused=false; pauseBadge.classList.remove('show'); kickIdle(); updateStartBtn(); }
+  function startPractice(){
+    if(started){ practice.focus(); return; }
+    started=true;
+    document.body.classList.add('collapsed');
+    practice.focus();
+    kickIdle();
+    updateStartBtn();
+  }
+  // 시작 전엔 클릭으로 시작
+  function startBtnClick(){ if(!started) startPractice(); }
+  // 시작 후엔 버튼을 꾹 누르고 있는 동안 일시정지 (마우스·터치 공통)
+  let btnHeld=false;
+  if(startBtn){
+    startBtn.addEventListener('pointerdown', e=>{
+      if(!started) return;
+      e.preventDefault(); btnHeld=true; pauseOn();
+    });
+    const releaseHold=()=>{ if(btnHeld){ btnHeld=false; pauseOff(); } };
+    window.addEventListener('pointerup', releaseHold);
+    window.addEventListener('pointercancel', releaseHold);
+  }
+
+  let lastLineCount=-1;
+  function renderType(){
+    const target=txt.value;
+    const typed=practice.value;
+    const n=Math.max(target.length,typed.length);
+    // 같은 상태(ghost/ok/bad)의 글자를 묶어서 한 번에 그림 → 가볍게
+    let html='', run='', runCls=null, ok=0;
+    const push=()=>{ if(runCls!==null){ html+='<span class="'+runCls+'">'+escapeHtml(run)+'</span>'; run=''; } };
+    for(let i=0;i<n;i++){
+      const tc=target[i], yc=typed[i];
+      let cls, ch;
+      if(i<typed.length){ ch=yc; cls=(yc===tc)?'ok':'bad'; if(yc===tc) ok++; }
+      else { ch=tc; cls='ghost'; }
+      if(cls!==runCls){ push(); runCls=cls; }
+      run+=ch;
+    }
+    push();
+    backdrop.innerHTML=html+'<span class="ghost"> </span>';
+    const lc=(target.match(/\n/g)||[]).length + (typed.match(/\n/g)||[]).length;
+    if(lc!==lastLineCount){ practice.style.height=backdrop.offsetHeight+'px'; lastLineCount=lc; }
+    gAcc=typed.length?Math.round(ok/typed.length*100):100;
+    const done=Math.min(typed.length,target.length);
+    const total=target.length||1;
+    progFill.style.width=Math.round(done/total*100)+'%';
+    accText.textContent='정확도 '+gAcc+'%';
+    // 완료 시 폭죽 (한 번만)
+    if(target.length>0 && done>=target.length){
+      progLabel.textContent='완료!';
+      if(!celebrated){ celebrated=true; celebrate(); }
+    } else {
+      progLabel.textContent='진행도';
+      celebrated=false;
+    }
+  }
+
+  // 어떤 문자를 자동으로 넘길지 (버튼으로 토글)
+  const skipCats = { hardSym:true, allSym:false, eng:false, foreign:false };
+  const reLetter=/\p{L}/u, reSym=/[\p{P}\p{S}]/u, reHangul=/\p{Script=Hangul}/u, reLatin=/\p{Script=Latin}/u;
+
+  // 선택된 분류에 해당하면 자동 입력 대상
+  function isHard(ch){
+    if(ch===undefined) return false;
+    if(ch==='\n'||ch===' '||ch==='\t') return false;
+    let isAscii, isSym, isLetter;
+    try {
+      const code=ch.codePointAt(0);
+      isAscii = code<=0x7E;
+      isSym = reSym.test(ch);
+      isLetter = reLetter.test(ch);
+      if(isSym){
+        if(skipCats.allSym) return true;                       // 모든 특수문자
+        if(skipCats.hardSym && !isAscii) return true;          // 키보드 밖 특수문자
+      }
+      if(isLetter){
+        if(skipCats.eng && reLatin.test(ch)) return true;      // 영어(라틴 문자)
+        if(skipCats.foreign && !reHangul.test(ch) && !reLatin.test(ch)) return true; // 외국어(한글·영어 외)
+      }
+    } catch(e){}
+    return false;
+  }
+  // 커서가 맨 끝이고 다음 글자가 대상이면 자동으로 채워넣음
+  function autoFill(){
+    if(practice.selectionStart!==practice.value.length) return;
+    const target=txt.value;
+    let changed=false;
+    while(practice.value.length<target.length && isHard(target[practice.value.length])){
+      practice.value+=target[practice.value.length];
+      changed=true;
+    }
+    if(changed) practice.selectionStart=practice.selectionEnd=practice.value.length;
+  }
+  // 칩 토글
+  document.querySelectorAll('#chips .chip').forEach(c=>{
+    c.addEventListener('click',()=>{
+      const cat=c.dataset.cat;
+      skipCats[cat]=!skipCats[cat];
+      c.classList.toggle('on', skipCats[cat]);
+      autoFill(); renderType(); practice.focus();
+    });
+  });
+
+  function resetType(){ started=false; paused=false; practice.value=''; lastLineCount=-1; autoFill(); renderType(); practice.focus(); kickIdle(); updateStartBtn(); }
+
+  /* ---------- 집중 장치: 흐르는 초 표시 + 일정 시간 안 치면 알림 ---------- */
+  let lastActivity=Date.now(), paused=false, gAcc=100, started=false;
+  const pauseBadge=document.getElementById('pauseBadge');
+  function hideNudge(){ nudge.classList.remove('show'); }
+  // 활동 발생 → 타이머 리셋
+  function kickIdle(){ lastActivity=Date.now(); hideNudge(); }
+
+  function tick(){
+    const sec=parseInt(idleSel.value,10);
+    const complete=practice.value.length>=txt.value.length && txt.value.length>0;
+    if(!started){ timerText.textContent='대기 중'; timerFill.style.width='0%'; lastActivity=Date.now(); hideNudge(); return; }
+    if(paused){ timerText.textContent='⏸ 멈춤'; return; }
+    if(complete){ timerText.textContent='완료 🎉'; timerFill.style.width='0%'; hideNudge(); lastActivity=Date.now(); return; }
+    if(!sec){ timerText.textContent='꺼짐'; timerFill.style.width='0%'; lastActivity=Date.now(); hideNudge(); return; }
+    const elapsed=(Date.now()-lastActivity)/1000;
+    const ratio=Math.min(1, elapsed/sec);
+    timerText.textContent=elapsed.toFixed(1)+' / '+sec+'초';
+    timerFill.style.width=(ratio*100)+'%';
+    timerFill.style.background = ratio>=1 ? '#a8472a' : (ratio>0.6 ? '#b8893f' : '#1d1b16');
+    if(elapsed>=sec){ nudgeSub.textContent='계속 따라 써요  ·  정확도 '+gAcc+'%'; nudge.classList.add('show'); }
+    else hideNudge();
+  }
+  setInterval(tick, 100);
+
+  // 알림을 클릭하면 닫고 바로 이어서 입력
+  nudge.addEventListener('click',()=>{ hideNudge(); practice.focus(); kickIdle(); });
+
+  // Ctrl 누르는 동안 타이머 멈춤 → 떼면 처음부터 다시 흐름
+  let ctrlPaused=false;
+  window.addEventListener('keydown',function(e){
+    if((e.key==='Control'||e.key==='Meta') && started && !paused){ ctrlPaused=true; pauseOn(); }
+  });
+  window.addEventListener('keyup',function(e){
+    if((e.key==='Control'||e.key==='Meta') && ctrlPaused){ ctrlPaused=false; pauseOff(); }
+  });
+  window.addEventListener('blur',function(){ if(ctrlPaused){ ctrlPaused=false; pauseOff(); } });
+
+  /* ---------- 완료 폭죽 (펑!) ---------- */
+  let celebrated=false;
+  const fx=document.getElementById('fx');
+  const ctx=fx.getContext('2d');
+  const COLORS=['#ef4444','#f59e0b','#22c55e','#3b82f6','#a855f7','#ec4899','#eab308','#06b6d4'];
+  let parts=[], rockets=[], flashes=[], fxRunning=false, audioCtx=null;
+  function resizeFx(){ fx.width=innerWidth; fx.height=innerHeight; }
+  window.addEventListener('resize',resizeFx); resizeFx();
+
+  // "펑" 소리 (WebAudio)
+  function pop(){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const t=audioCtx.currentTime, dur=0.35;
+      const buf=audioCtx.createBuffer(1, audioCtx.sampleRate*dur, audioCtx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++){ d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2); }
+      const src=audioCtx.createBufferSource(); src.buffer=buf;
+      const g=audioCtx.createGain(); g.gain.setValueAtTime(0.35,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+      const f=audioCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(1800,t); f.frequency.exponentialRampToValueAtTime(300,t+dur);
+      src.connect(f); f.connect(g); g.connect(audioCtx.destination); src.start(t);
+    }catch(e){}
+  }
+
+  function explode(x,y,col){
+    pop();
+    flashes.push({x,y,r:6,life:1});
+    const N=80;
+    for(let i=0;i<N;i++){
+      const a=(i/N)*Math.PI*2 + Math.random()*0.2, sp=2.5+Math.random()*6.5;
+      parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,
+        col:Math.random()<0.7?col:COLORS[(Math.random()*COLORS.length)|0], r:1.8+Math.random()*2.6});
+    }
+  }
+  function launchRocket(){
+    const x=innerWidth*(0.15+Math.random()*0.7);
+    rockets.push({x, y:innerHeight+10, vy:-(10+Math.random()*3.5),
+      targetY: innerHeight*(0.12+Math.random()*0.32), col:COLORS[(Math.random()*COLORS.length)|0], trail:[]});
+  }
+  function celebrate(){
+    fx.classList.add('show');
+    let n=0;
+    launchRocket();
+    const seq=setInterval(()=>{ launchRocket(); if(Math.random()<0.5) launchRocket(); if(++n>=7) clearInterval(seq); }, 260);
+    if(!fxRunning){ fxRunning=true; requestAnimationFrame(animFx); }
+  }
+  function animFx(){
+    ctx.clearRect(0,0,fx.width,fx.height);
+    // 로켓
+    rockets.forEach(r=>{
+      r.trail.push({x:r.x,y:r.y}); if(r.trail.length>8) r.trail.shift();
+      r.y+=r.vy; r.vy+=0.12;
+      ctx.strokeStyle=r.col; ctx.lineWidth=3; ctx.lineCap='round';
+      ctx.beginPath(); r.trail.forEach((p,i)=>{ i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }); ctx.lineTo(r.x,r.y); ctx.stroke();
+      if(r.vy>=0 || r.y<=r.targetY){ explode(r.x,r.y,r.col); r.dead=true; }
+    });
+    rockets=rockets.filter(r=>!r.dead);
+    // 섬광
+    flashes.forEach(f=>{ f.r+=6; f.life-=0.08; ctx.globalAlpha=Math.max(0,f.life)*0.6; ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fill(); });
+    flashes=flashes.filter(f=>f.life>0);
+    // 불꽃 입자
+    parts.forEach(p=>{ p.vy+=0.08; p.vx*=0.99; p.vy*=0.99; p.x+=p.vx; p.y+=p.vy; p.life-=0.011;
+      ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.col;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); });
+    ctx.globalAlpha=1;
+    parts=parts.filter(p=>p.life>0 && p.y<fx.height+30);
+    if(parts.length||rockets.length||flashes.length){ requestAnimationFrame(animFx); }
+    else { fxRunning=false; fx.classList.remove('show'); }
+  }
+
+  function applyVars(){
+    sizeVal.textContent=size.value;
+    opVal.textContent=opacity.value+'%';
+    document.documentElement.style.setProperty('--ink','rgba(28,26,22,'+(opacity.value/100)+')');
+    document.documentElement.style.setProperty('--base',size.value+'px');
+  }
+
+  // 입력 칸: 탭 → 줄바꿈 문자 삽입
+  txt.addEventListener('keydown',function(e){
+    if(e.key==='Tab'){
+      e.preventDefault();
+      const s=this.selectionStart, en=this.selectionEnd;
+      this.value=this.value.slice(0,s)+'\n'+this.value.slice(en);
+      this.selectionStart=this.selectionEnd=s+1;
+      lastLineCount=-1; renderType();
+    }
+  });
+
+  // 연습 칸: 탭 → 안내 글씨의 '다음 줄 시작'으로 정확히 이동 (어긋남 없음)
+  practice.addEventListener('keydown',function(e){
+    if(e.key==='Tab'){
+      e.preventDefault();
+      const target=txt.value;
+      const nl=target.indexOf('\n', this.value.length);
+      if(nl===-1) return;               // 다음 줄이 없으면 무시
+      this.value=target.slice(0, nl+1); // 현재 줄까지 채우고 다음 줄 맨 앞으로
+      this.selectionStart=this.selectionEnd=this.value.length;
+      autoFill(); renderType();
+    }
+  });
+
+  practice.addEventListener('input',()=>{ autoFill(); renderType(); kickIdle(); });
+  practice.addEventListener('keydown',kickIdle);
+  practice.addEventListener('blur',hideNudge);
+  txt.addEventListener('input',()=>{ lastLineCount=-1; renderType(); kickIdle(); });
+  idleSel.addEventListener('change',kickIdle);
+  [size,opacity].forEach(el=>el.addEventListener('input',()=>{ applyVars(); lastLineCount=-1; renderType(); }));
+
+  // 좁은 화면에서는 사이드바를 접은 채로 시작
+  if(window.matchMedia('(max-width: 880px)').matches) document.body.classList.add('collapsed');
+
+  applyVars();
+  autoFill();
+  renderType();
+  updateStartBtn();
+  kickIdle();
+</script>
+</body>
+</html>
