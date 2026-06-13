@@ -260,7 +260,7 @@
             <button class="chip" data-cat="eng">영문</button>
             <button class="chip" data-cat="foreign">외국 문자</button>
           </div>
-          <p class="hint" style="margin:2px 0 0">특수기호: 키보드에 없는 — … “ ” · → 등 · 문장부호 전체: 마침표·쉼표까지 · 외국 문자: 한자·가나 등</p>
+          <p class="hint" style="margin:2px 0 0">특수기호: 키보드에 없는 — … ① ½ → 등 · 문장부호 전체: 마침표·쉼표·괄호까지 · 외국 문자: 한자·가나 등</p>
         </div>
 
         <div class="field">
@@ -423,20 +423,19 @@
   function isHard(ch){
     if(ch===undefined) return false;
     if(ch==='\n'||ch===' '||ch==='\t') return false;
-    let isAscii, isSym, isLetter;
     try {
       const code=ch.codePointAt(0);
-      isAscii = code<=0x7E;
-      isSym = reSym.test(ch);
-      isLetter = reLetter.test(ch);
-      if(isSym){
-        if(skipCats.allSym) return true;                       // 모든 특수문자
-        if(skipCats.hardSym && !isAscii) return true;          // 키보드 밖 특수문자
-      }
-      if(isLetter){
-        if(skipCats.eng && reLatin.test(ch)) return true;      // 영어(라틴 문자)
-        if(skipCats.foreign && !reHangul.test(ch) && !reLatin.test(ch)) return true; // 외국어(한글·영어 외)
-      }
+      const isAscii = code<=0x7E;
+      const isLetter = reLetter.test(ch);
+      const isSym = reSym.test(ch);
+      // 문장부호 전체: 모든 기호·문장부호 (ASCII 포함)
+      if(skipCats.allSym && isSym) return true;
+      // 특수기호: 키보드에 없는(비ASCII) 문자 중 '글자'가 아닌 것 → 기호·①②③·½·→·이모지 등
+      if(skipCats.hardSym && !isAscii && !isLetter) return true;
+      // 영문(라틴 문자)
+      if(skipCats.eng && isLetter && reLatin.test(ch)) return true;
+      // 외국 문자(한글·영문 외)
+      if(skipCats.foreign && isLetter && !reHangul.test(ch) && !reLatin.test(ch)) return true;
     } catch(e){}
     return false;
   }
